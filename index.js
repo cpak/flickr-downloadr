@@ -2,6 +2,7 @@ require('dotenv').config()
 const debug = require('debug')('nflickr:main')
 const fs = require('fs')
 const R = require('ramda')
+const B = require('bluebird')
 
 const createApi = require('./lib/flickr')
 
@@ -41,9 +42,10 @@ const downloadTo = path => url => new Promise((resolve, reject) => {
 const main = () => API
   .getPhotos()
   .then(R.path(['data', 'photos', 'photo']))
-  .then(photos => API.getSizes(photos[0].id))
-  .then(R.pipe(R.path(['data', 'sizes', 'size']), findOriginalUrl))
-  .then(downloadTo('/tmp/nflickr.jpg'))
+  // .then(photos => API.getSizes(photos[0].id))
+  .map(R.pipe(R.prop('id'), API.getSizes), { concurrency: 10 })
+  .then(R.map(R.pipe(R.path(['data', 'sizes', 'size']), findOriginalUrl)))
+  // .then(downloadTo('/tmp/nflickr.jpg'))
 
 main()
   .then(
