@@ -1,12 +1,52 @@
 require('dotenv').config()
+const debug = require('debug')('nflickr:main')
+const fs = require('fs')
+const R = require('ramda')
 
-const authRequest = require('./lib/auth/request')
-const authorize = require('./lib/auth/authorize')
-const accessToken = require('./lib/auth/exchange')
+const createApi = require('./lib/flickr')
 
-const main = (key, secret) => authRequest(key, secret)
-  .then(({ token, tokenSecret }) => authorize(token)
-    .then(verifier => accessToken(key, secret)(token, tokenSecret, verifier)))
+const KEY = process.env.KEY
+const SECRET = process.env.SECRET
+const OAUTH_PATH = './.oauth'
 
-main(process.env.KEY, process.env.SECRET)
-  .then(console.log, console.error)
+const API = createApi(KEY, SECRET, OAUTH_PATH)
+
+const findOriginalUrl = sizes => new Promise((resolve, reject) => {
+  const originalUrl = (sizes.find(s => s.label === 'Original') || {}).source
+  if (originalUrl) {
+    resolve(originalUrl)
+  } else {
+    reject(new Error('No original URL found'))
+  }
+})
+
+const downloadTo = path => url => new Promise((resolve, reject) => {
+  debug('Downloading %s to %s', url, path)
+  const writeStream = fs.createWriteStream(path)
+  const requestConfig = {
+    method: 'GET',
+    url,
+    responseType: 'stream'
+  }
+  API
+    .signedRequest(requestConfig)
+    .then(({ data }) => {
+      debug('Got response, writing...')
+      data.on('error', reject)
+      data.on('end', resolve)
+      data.pipe(writeStream)
+    })
+})
+
+const main = () => API
+  .getPhotos()
+  .then(R.path(['data', 'photos', 'photo']))
+  .then(photos => API.getSizes(photos[0].id))
+  .then(R.pipe(R.path(['data', 'sizes', 'size']), findOriginalUrl))
+  .then(downloadTo('/tmp/nflickr.jpg'))
+
+main()
+  .then(
+    console.log,
+    console.error
+  )
