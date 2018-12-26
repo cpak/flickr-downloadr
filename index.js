@@ -12,14 +12,7 @@ const OAUTH_PATH = './.oauth'
 
 const API = createApi(KEY, SECRET, OAUTH_PATH)
 
-const findOriginalUrl = sizes => new Promise((resolve, reject) => {
-  const originalUrl = (sizes.find(s => s.label === 'Original') || {}).source
-  if (originalUrl) {
-    resolve(originalUrl)
-  } else {
-    reject(new Error('No original URL found'))
-  }
-})
+const findOriginalUrl = sizes => (sizes.find(s => s.label === 'Original') || {}).source
 
 const downloadTo = path => url => new Promise((resolve, reject) => {
   debug('Downloading %s to %s', url, path)
@@ -42,7 +35,7 @@ const downloadTo = path => url => new Promise((resolve, reject) => {
 const main = () => API
   .getPhotos()
   .then(R.path(['data', 'photos', 'photo']))
-  // .then(photos => API.getSizes(photos[0].id))
+  .then(R.take(5))
   .map(R.pipe(R.prop('id'), API.getSizes), { concurrency: 10 })
   .then(R.map(R.pipe(R.path(['data', 'sizes', 'size']), findOriginalUrl)))
   // .then(downloadTo('/tmp/nflickr.jpg'))
