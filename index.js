@@ -6,9 +6,9 @@ const debug = require('debug')('nflickr:main')
 const R = require('ramda')
 const H = require('highland')
 const createApi = require('./lib/flickr')
-const photosStream = require('./photos-stream')
-const createClient = require('./load/sqlite-client')
-const createRepo = require('./load/photos-repo')
+const photosStream = require('./lib/photos-stream')
+const createClient = require('./db/sqlite-client')
+const createRepo = require('./db/photos-repo')
 
 const DB_PATH = process.env.DB_PATH
 const DB_TABLE_NAME = process.env.DB_TABLE_NAME
