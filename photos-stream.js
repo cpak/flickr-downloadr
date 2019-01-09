@@ -1,3 +1,4 @@
+const debug = require('debug')('nflickr:photos')
 const R = require('ramda')
 
 const PaginatedGenerator = require('./lib/paginated-generator')
@@ -15,7 +16,7 @@ const createPhotosStream = opts => {
   const pageLimit = opts.pageLimit || null
 
   const getPage = page => API.getPhotos({ page, per_page: perPage })
-  const isDone = res => res.data.photos.page === res.data.photos.pages || (pageLimit && res.data.photos.page === pageLimit)
+  const isDone = res => (debug(`Page ${res.data.photos.page} of ${pageLimit || res.data.photos.pages}`), (res.data.photos.page === res.data.photos.pages || (pageLimit && res.data.photos.page === pageLimit))) // eslint-disable-line no-sequences
   const extractData = R.path(['data', 'photos', 'photo'])
 
   return new StreamFromPromiseGenerator(
