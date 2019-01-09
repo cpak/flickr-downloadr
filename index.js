@@ -15,6 +15,9 @@ const DB_TABLE_NAME = process.env.DB_TABLE_NAME
 const DOWNLOAD_DIR = process.env.DOWNLOAD_DIR
 const KEY = process.env.KEY
 const SECRET = process.env.SECRET
+const START_PAGE = process.env.START_PAGE
+const PER_PAGE = process.env.PER_PAGE
+const PAGE_LIMIT = process.env.PAGE_LIMIT
 const OAUTH_PATH = './.oauth'
 
 const API = createApi(KEY, SECRET, OAUTH_PATH)
@@ -87,9 +90,9 @@ const downloadToDir = dirPath => record => new Promise((resolve, reject) => {
 
 const opts = {
   api: API,
-  startPage: 1,
-  perPage: 10,
-  pageLimit: 10
+  startPage: START_PAGE,
+  perPage: PER_PAGE,
+  pageLimit: PAGE_LIMIT || null
 }
 
 const main = () => {
