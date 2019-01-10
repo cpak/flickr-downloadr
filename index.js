@@ -10,17 +10,8 @@ const photosStream = require('./lib/photos-stream')
 const createClient = require('./db/sqlite-client')
 const createRepo = require('./db/photos-repo')
 
-const DB_PATH = process.env.DB_PATH
-const DB_TABLE_NAME = process.env.DB_TABLE_NAME
-const DOWNLOAD_DIR = process.env.DOWNLOAD_DIR
 const KEY = process.env.KEY
 const SECRET = process.env.SECRET
-const START_PAGE = process.env.START_PAGE
-const PER_PAGE = process.env.PER_PAGE
-const PAGE_LIMIT = process.env.PAGE_LIMIT
-const OAUTH_PATH = './.oauth'
-
-const API = createApi(KEY, SECRET, OAUTH_PATH)
 
 // Helpers
 
@@ -36,9 +27,9 @@ const originalUrlFromSizes = R.compose(
   R.path(['data', 'sizes', 'size'])
 )
 
-const originalUrl = wrapH(R.composeP(
+const originalUrl = api => wrapH(R.composeP(
   wrapP(originalUrlFromSizes),
-  API.getSizes,
+  api.getSizes,
   wrapP(R.prop('id'))
 ))
 
@@ -50,16 +41,16 @@ const prepareDb = (dbPath, tableName) => createClient(dbPath)
 
 const getRepo = (() => {
   let promisedRepo = null
-  return () => promisedRepo || (promisedRepo = prepareDb(DB_PATH, DB_TABLE_NAME))
+  return (dbPath, dbTable) => promisedRepo || (promisedRepo = prepareDb(dbPath, dbTable))
 })()
 
 const createRecord = ([photoData, url]) => Object.assign({}, photoData, { url, path: '' })
 
-const insertDb = o => getRepo()
+const insertDb = (dbPath, dbTable) => o => getRepo(dbPath, dbTable)
   .then(callMethodWith('insertOrIgnore', o))
   .then(({ changes }) => debug(`${changes ? 'inserted' : 'skipped '} "${JSON.stringify(o)}"`))
 
-const updateDb = o => getRepo()
+const updateDb = (dbPath, dbTable) => o => getRepo(dbPath, dbTable)
   .then(callMethodWith('update', o))
   .then(({ changes }) => debug(`${changes ? 'updated' : 'skipped '} "${JSON.stringify(o)}"`))
 
@@ -67,7 +58,7 @@ const updateDb = o => getRepo()
 
 const getFileName = url => new URL(url).pathname.split('/').reverse()[0]
 
-const downloadToDir = dirPath => record => new Promise((resolve, reject) => {
+const downloadToDir = (api, dirPath) => record => new Promise((resolve, reject) => {
   const url = record.url
   const filePath = path.join(dirPath, getFileName(url))
   debug('Downloading %s to %s', url, filePath)
@@ -76,7 +67,7 @@ const downloadToDir = dirPath => record => new Promise((resolve, reject) => {
     url,
     responseType: 'stream'
   }
-  API
+  api
     .signedRequest(requestConfig)
     .then(({ data }) => {
       debug('Got response, writing...')
@@ -88,24 +79,23 @@ const downloadToDir = dirPath => record => new Promise((resolve, reject) => {
 
 // Main
 
-const opts = {
-  api: API,
-  startPage: START_PAGE,
-  perPage: PER_PAGE,
-  pageLimit: PAGE_LIMIT || null
-}
-
-const main = () => {
+module.exports = (o) => {
+  debug(o)
+  const { destDir, oauthPath, dbPath, dbTable, pageStart, pageSize, pageLimit } = o
+  const API = createApi(KEY, SECRET, oauthPath)
+  const opts = {
+    api: API,
+    startPage: pageStart,
+    perPage: pageSize,
+    pageLimit: pageLimit
+  }
   const photos = H(photosStream(opts))
-  H([photos.observe(), photos.fork().flatMap(originalUrl)])
+  return H([photos.observe(), photos.fork().flatMap(originalUrl(API))])
     .zipAll0()
     .map(createRecord)
-    .doto(insertDb)
-    .map(wrapH(downloadToDir(DOWNLOAD_DIR)))
+    .doto(insertDb(dbPath, dbTable))
+    .map(wrapH(downloadToDir(API, destDir)))
     .parallel(5)
-    .doto(updateDb)
+    .doto(updateDb(dbPath, dbTable))
     .map(({ url, path }) => `${url} => ${path}`)
-    .pipe(process.stdout)
 }
-
-main()

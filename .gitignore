@@ -1,5 +1,5 @@
 node_modules
 .env
 .oauth
-db
+*.sqlite
 *.log
