@@ -1,6 +1,9 @@
-const string = x => `${x}`
+const string = x => (x === undefined || x === null)
+  ? null
+  : `${x}`
 
 const int = x => {
+  if (x === undefined || x === null) return null
   const maybeInt = parseInt(x, 10)
   if (isNaN(x)) throw new Error(`parseInt failed for input ${x}`)
   return maybeInt
