@@ -56,4 +56,6 @@ try {
 }
 
 opts.destDir = destDir
-download(opts).pipe(process.stdout)
+download(opts)
+  .map(({ url, path }) => `Downloaded ${url} to ${path}\n`)
+  .pipe(process.stdout)

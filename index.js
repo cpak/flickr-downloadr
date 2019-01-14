@@ -18,6 +18,7 @@ const SECRET = process.env.SECRET
 const wrapP = fn => (...args) => Promise.resolve(fn(...args))
 const wrapH = fn => (...args) => H(fn(...args))
 const callMethodWith = (methodName, ...args) => o => o[methodName](...args)
+const objMerge = objs => Object.assign({}, ...objs)
 
 // URL juggling
 
@@ -33,6 +34,18 @@ const originalUrl = api => wrapH(R.composeP(
   wrapP(R.prop('id'))
 ))
 
+// Date taken
+
+const colonOrHyphenRx = new RegExp(':|-', 'g')
+const formatDateTaken = s => s.replace(' ', 'T').replace(colonOrHyphenRx, '')
+
+const dateTaken = api => wrapH(R.composeP(
+  wrapP(formatDateTaken),
+  wrapP(R.path(['data', 'photo', 'dates', 'taken'])),
+  api.getInfo,
+  wrapP(R.prop('id'))
+))
+
 // DB
 
 const prepareDb = (dbPath, tableName) => createClient(dbPath)
@@ -44,7 +57,7 @@ const getRepo = (() => {
   return (dbPath, dbTable) => promisedRepo || (promisedRepo = prepareDb(dbPath, dbTable))
 })()
 
-const createRecord = ([photoData, url]) => Object.assign({}, photoData, { url, path: '' })
+const createRecord = ([photoData, url, dateTaken]) => Object.assign({}, photoData, { url, path: '' }, { date_taken: dateTaken })
 
 const insertDb = (dbPath, dbTable) => o => getRepo(dbPath, dbTable)
   .then(callMethodWith('insertOrIgnore', o))
@@ -58,29 +71,29 @@ const updateDb = (dbPath, dbTable) => o => getRepo(dbPath, dbTable)
 
 const getFileName = url => new URL(url).pathname.split('/').reverse()[0]
 
-const downloadToDir = (api, dirPath) => record => new Promise((resolve, reject) => {
-  const url = record.url
-  const filePath = path.join(dirPath, getFileName(url))
-  debug('Downloading %s to %s', url, filePath)
+const downloadTo = (dirPath, api) => ({ url }) => new Promise((resolve, reject) => {
   const requestConfig = {
     method: 'GET',
     url,
     responseType: 'stream'
   }
-  api
+  const filePath = path.join(dirPath, getFileName(url))
+  debug(`Downloading ${url} to ${filePath}`)
+  return api
     .signedRequest(requestConfig)
-    .then(({ data }) => {
-      debug('Got response, writing...')
+    .then(({ headers, data }) => {
+      const expectedBytes = headers['content-length']
       data.on('error', reject)
-      data.on('end', () => resolve(Object.assign({}, record, { path: filePath })))
+      data.on('end', () => resolve({ path: filePath, bytes: expectedBytes }))
       data.pipe(fs.createWriteStream(filePath))
     })
+    .catch(reject)
 })
 
 // Main
 
 module.exports = (o) => {
-  debug(o)
+  debug('Options: %o', o)
   const { destDir, oauthPath, dbPath, dbTable, pageStart, pageSize, pageLimit } = o
   const API = createApi(KEY, SECRET, oauthPath)
   const opts = {
@@ -90,12 +103,20 @@ module.exports = (o) => {
     pageLimit: pageLimit
   }
   const photos = H(photosStream(opts))
-  return H([photos.observe(), photos.fork().flatMap(originalUrl(API))])
+  const records = H([
+    photos.observe(),
+    photos.fork().flatMap(originalUrl(API)),
+    photos.fork().flatMap(dateTaken(API))
+  ])
     .zipAll0()
     .map(createRecord)
     .doto(insertDb(dbPath, dbTable))
-    .map(wrapH(downloadToDir(API, destDir)))
-    .parallel(5)
+
+  return H([
+    records.observe(),
+    records.fork().flatMap(wrapH(downloadTo(destDir, API)))
+  ])
+    .zipAll0()
+    .map(objMerge)
     .doto(updateDb(dbPath, dbTable))
-    .map(({ url, path }) => `${url} => ${path}`)
 }
