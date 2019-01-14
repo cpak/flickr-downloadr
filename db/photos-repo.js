@@ -2,6 +2,8 @@ const { string, int, values, sanitize: _sanitize, sanitizePartial: _sanitizePart
 
 const fields = {
   id: string,
+  date_taken: string,
+  bytes: string,
   url: string,
   owner: string,
   secret: string,
@@ -20,6 +22,8 @@ const CREATE_TABLE_SQL = tableName => `
 CREATE TABLE IF NOT EXISTS ${tableName} (
   id VARCHAR(255) PRIMARY KEY,
   date DATETIME DEFAULT CURRENT_TIMESTAMP,
+  date_taken VARCHAR(255),
+  bytes VARCHAR(255),
   url VARCHAR(255),
   owner VARCHAR(255),
   secret VARCHAR(255),
@@ -31,13 +35,13 @@ CREATE TABLE IF NOT EXISTS ${tableName} (
 const createTable = (client, tableName) => () => client.run(CREATE_TABLE_SQL(tableName))
 
 const INSERT_SQL = tableName => `INSERT INTO ${tableName}
-  (id, url, owner, secret, server, farm, title, path)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  (id, date_taken, bytes, url, owner, secret, server, farm, title, path)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 const insert = (client, tableName) => o => client.run(INSERT_SQL(tableName), values(sanitize(o)))
 
 const INSERT_OR_IGNORE_SQL = tableName => `INSERT OR IGNORE INTO ${tableName}
-  (id, url, owner, secret, server, farm, title, path)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  (id, date_taken, bytes, url, owner, secret, server, farm, title, path)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 const insertOrIgnore = (client, tableName) => o => client.run(INSERT_OR_IGNORE_SQL(tableName), values(sanitize(o)))
 
 const UPDATE_SQL = (tableName, cols) => `UPDATE ${tableName} SET ${cols.map(c => c + ' = ?').join(', ')} WHERE id = ?`
@@ -72,5 +76,7 @@ const createRepo = (client, tableName = DEFAULT_TABLE_NAME) => ({
   deleteById: deleteById(client, tableName),
   flush: flush(client, tableName)
 })
+
+createRepo.sanitize = sanitize
 
 module.exports = createRepo
