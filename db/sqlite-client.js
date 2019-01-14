@@ -47,6 +47,7 @@ const client = db => ({
 })
 
 const create = dbFilePath => new Promise((resolve, reject) => {
+  debug('Using database at %s', dbFilePath)
   const db = new sqlite3.Database(dbFilePath, err => {
     if (err) {
       reject(err)
