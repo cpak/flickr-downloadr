@@ -57,5 +57,5 @@ try {
 
 opts.destDir = destDir
 download(opts)
-  .map(({ url, path }) => `Downloaded ${url} to ${path}\n`)
+  .map(({ url, path, bytes }) => `Downloaded ${url} to ${path} (${bytes})\n`)
   .pipe(process.stdout)

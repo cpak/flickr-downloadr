@@ -3,7 +3,6 @@ const fs = require('fs')
 const path = require('path')
 
 const debug = require('debug')('nflickr:main')
-const R = require('ramda')
 const H = require('highland')
 const createApi = require('./lib/flickr')
 const photosStream = require('./lib/photos-stream')
@@ -15,36 +14,12 @@ const SECRET = process.env.SECRET
 
 // Helpers
 
-const wrapP = fn => (...args) => Promise.resolve(fn(...args))
 const wrapH = fn => (...args) => H(fn(...args))
 const callMethodWith = (methodName, ...args) => o => o[methodName](...args)
 const objMerge = objs => Object.assign({}, ...objs)
 
-// URL juggling
-
-const originalUrlFromSizes = R.compose(
-  R.propOr(null, 'source'),
-  R.find(R.propEq('label', 'Original')),
-  R.path(['data', 'sizes', 'size'])
-)
-
-const originalUrl = api => wrapH(R.composeP(
-  wrapP(originalUrlFromSizes),
-  api.getSizes,
-  wrapP(R.prop('id'))
-))
-
-// Date taken
-
 const colonOrHyphenRx = new RegExp(':|-', 'g')
 const formatDateTaken = s => s.replace(' ', 'T').replace(colonOrHyphenRx, '')
-
-const dateTaken = api => wrapH(R.composeP(
-  wrapP(formatDateTaken),
-  wrapP(R.path(['data', 'photo', 'dates', 'taken'])),
-  api.getInfo,
-  wrapP(R.prop('id'))
-))
 
 // DB
 
@@ -57,7 +32,7 @@ const getRepo = (() => {
   return (dbPath, dbTable) => promisedRepo || (promisedRepo = prepareDb(dbPath, dbTable))
 })()
 
-const createRecord = ([photoData, url, dateTaken]) => Object.assign({}, photoData, { url, path: '' }, { date_taken: dateTaken })
+const createRecord = photoData => Object.assign({}, photoData, { url: photoData.url_o, path: '' }, { date_taken: formatDateTaken(photoData.datetaken) })
 
 const insertDb = (dbPath, dbTable) => o => getRepo(dbPath, dbTable)
   .then(callMethodWith('insertOrIgnore', o))
@@ -100,15 +75,11 @@ module.exports = (o) => {
     api: API,
     startPage: pageStart,
     perPage: pageSize,
-    pageLimit: pageLimit
+    pageLimit: pageLimit,
+    extras: ['url_o', 'date_taken']
   }
-  const photos = H(photosStream(opts))
-  const records = H([
-    photos.observe(),
-    photos.fork().flatMap(originalUrl(API)),
-    photos.fork().flatMap(dateTaken(API))
-  ])
-    .zipAll0()
+
+  const records = H(photosStream(opts))
     .map(createRecord)
     .doto(insertDb(dbPath, dbTable))
 
