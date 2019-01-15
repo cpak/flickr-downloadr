@@ -79,15 +79,19 @@ module.exports = (o) => {
     extras: ['url_o', 'date_taken']
   }
 
-  const records = H(photosStream(opts))
+  const [ photos, photosEvents ] = photosStream(opts)
+
+  const records = H(photos)
     .map(createRecord)
     .doto(insertDb(dbPath, dbTable))
 
-  return H([
+  const output = H([
     records.observe(),
     records.fork().flatMap(wrapH(downloadTo(destDir, API)))
   ])
     .zipAll0()
     .map(objMerge)
     .doto(updateDb(dbPath, dbTable))
+
+  return [ output, photosEvents ]
 }
