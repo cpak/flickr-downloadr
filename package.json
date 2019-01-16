@@ -1,7 +1,7 @@
 {
-  "name": "n-flickr-photos",
+  "name": "flickr-downloadr",
   "version": "1.0.0",
-  "description": "",
+  "description": "download all your flickr photos with meta data",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
