@@ -54,14 +54,16 @@ try {
 } catch (err) {
   die(err.message)
 }
-
 opts.destDir = destDir
+
 const [ output, ee ] = download(opts)
+
 let total = '?'
 let current = 0
 ee.on('total', n => {
   total = n
 })
+
 output
   .map(({ url, path, bytes }) => `${++current}/${total}: ${url} => ${path} (${bytes})\n`)
   .pipe(process.stdout)
