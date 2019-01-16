@@ -14,6 +14,7 @@
     "debug": "^4.1.1",
     "dotenv": "^6.2.0",
     "highland": "^2.13.0",
+    "parallel-transform": "^1.1.0",
     "prompt": "^1.0.0",
     "ramda": "^0.26.1",
     "sqlite3": "^4.0.4"
