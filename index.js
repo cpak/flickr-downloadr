@@ -36,11 +36,11 @@ const createRecord = photoData => Object.assign({}, photoData, { url: photoData.
 
 const insertDb = (dbPath, dbTable) => o => getRepo(dbPath, dbTable)
   .then(callMethodWith('insertOrIgnore', o))
-  .then(({ changes }) => debug(`${changes ? 'inserted' : 'skipped '} "${JSON.stringify(o)}"`))
+  .then(({ changes }) => debug(`${changes ? 'Inserted' : 'Skipped '} ${o.id}`))
 
 const updateDb = (dbPath, dbTable) => o => getRepo(dbPath, dbTable)
   .then(callMethodWith('update', o))
-  .then(({ changes }) => debug(`${changes ? 'updated' : 'skipped '} "${JSON.stringify(o)}"`))
+  .then(({ changes }) => debug(`${changes ? 'Updated' : 'Skipped '} ${o.id}`))
 
 // Download
 
@@ -54,13 +54,14 @@ const downloadTo = (dirPath, api) => ({ url }) => new Promise((resolve, reject) 
   }
   const filePath = path.join(dirPath, getFileName(url))
   debug(`Downloading ${url} to ${filePath}`)
-  return api
+  api
     .signedRequest(requestConfig)
     .then(({ headers, data }) => {
       const expectedBytes = headers['content-length']
-      data.on('error', reject)
-      data.on('end', () => resolve({ path: filePath, bytes: expectedBytes }))
-      data.pipe(fs.createWriteStream(filePath))
+      const ws = fs.createWriteStream(filePath)
+      ws.on('error', reject)
+      ws.on('end', () => resolve({ path: filePath, bytes: expectedBytes }))
+      data.pipe(ws)
     })
     .catch(reject)
 })
