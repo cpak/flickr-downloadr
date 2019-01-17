@@ -1,4 +1,4 @@
-const debug = require('debug')('nflickr:sqlite-client')
+const debug = require('debug')('downloadr:sqlite-client')
 const sqlite3 = require('sqlite3')
 
 const run = db => (sql, params = []) =>
