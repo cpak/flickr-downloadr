@@ -3,7 +3,7 @@
 const fs = require('fs')
 const cli = require('commander')
 const { version } = require('./package.json')
-const download = require('.')
+const download = require('./lib/download')
 
 const usage = `
   Usage
