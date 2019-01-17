@@ -56,14 +56,16 @@ try {
 }
 opts.destDir = destDir
 
-const [ output, ee ] = download(opts)
+const output = download(opts)
 
 let total = '?'
 let current = 0
-ee.on('total', n => {
+output.on('total', n => {
   total = n
 })
 
+const time = () => new Date().toISOString().split('T')[1].split('.')[0]
+
 output
-  .map(({ url, path, bytes }) => `${++current}/${total}: ${url} => ${path} (${bytes})\n`)
+  .map(({ url, path, bytes }) => `${time()} ${++current}/${total}\n`)
   .pipe(process.stdout)

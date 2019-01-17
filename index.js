@@ -17,7 +17,6 @@ const SECRET = process.env.SECRET
 
 const wrapH = fn => (...args) => H(fn(...args))
 const callMethodWith = (methodName, ...args) => o => o[methodName](...args)
-const objMerge = objs => Object.assign({}, ...objs)
 
 const colonOrHyphenRx = new RegExp(':|-', 'g')
 const formatDateTaken = s => s.replace(' ', 'T').replace(colonOrHyphenRx, '')
@@ -37,11 +36,9 @@ const createRecord = photoData => Object.assign({}, photoData, { url: photoData.
 
 const insertDb = (dbPath, dbTable) => o => getRepo(dbPath, dbTable)
   .then(callMethodWith('insertOrIgnore', o))
-  .then(({ changes }) => debug(`${changes ? 'Inserted' : 'Skipped '} ${o.id}`))
 
 const updateDb = (dbPath, dbTable) => o => getRepo(dbPath, dbTable)
   .then(callMethodWith('update', o))
-  .then(({ changes }) => debug(`${changes ? 'Updated' : 'Skipped '} ${o.id}`))
 
 const hasNoPath = (dbPath, dbTable) => o => getRepo(dbPath, dbTable)
   .then(callMethodWith('getById', o.id))
@@ -86,22 +83,24 @@ module.exports = (o) => {
     extras: ['url_o', 'date_taken']
   }
 
-  const [ photos, photosEvents ] = photosStream(opts)
-
-  photosEvents.on('total', n => debug('total', n))
+  const photos = photosStream(opts)
 
   const records = H(photos)
     .flatFilter(wrapH(hasNoPath(dbPath, dbTable)))
     .map(createRecord)
     .doto(insertDb(dbPath, dbTable))
 
-  const output = H([
-    records.observe(),
-    H(records.pipe(parallel(5, downloadTo(destDir, API))))
-  ])
-    .zipAll0()
-    .map(objMerge)
+  const download = H(records.pipe(parallel(5, downloadTo(destDir, API))))
+
+  const output = download
+    .zip(records.observe())
+    .map(([p, r]) => Object.assign({}, r, p))
     .doto(updateDb(dbPath, dbTable))
 
-  return [ output, photosEvents ]
+  photos.on('total', n => {
+    debug('total', n)
+    output.emit('total', n)
+  })
+
+  return output
 }
