@@ -13,12 +13,14 @@ cli
   .option('-o, --oauth-path <file path>', 'location to store oauth credentials', './.oauth')
   .option('-d, --db-path <file path>', 'location of sqlite db', './nflickr.sqlite')
   .option('-t, --db-table <table name>', 'table name', 'nflickr_photos')
+  .option('-f, --force', 'force download', false)
   .parse(process.argv)
 
 const opts = [
   'oauthPath',
   'dbPath',
-  'dbTable'
+  'dbTable',
+  'force'
 ].reduce((o, k) => Object.assign({}, o, { [k]: cli[k] }), {})
 
 const die = msg => {
@@ -40,12 +42,8 @@ const output = download(opts)
 
 let total = '?'
 let current = 0
-output.on('total', n => {
-  total = n
-})
-
-const time = () => new Date().toISOString().split('T')[1].split('.')[0]
+output.on('total', n => (total = n))
 
 output
-  .map(({ url, path, bytes }) => `${time()} ${++current}/${total}\n`)
+  .map(({ path, bytes, duration }) => `${++current}/${total}: ${path} ${bytes}b, ${duration}ms\n`)
   .pipe(process.stdout)
