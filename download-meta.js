@@ -6,8 +6,11 @@ const downloadMeta = require('./lib/download-meta')
 
 const int = x => parseInt(x, 10)
 
+const usage = '[options]'
+
 cli
   .version(version)
+  .usage(usage)
   .option('-o, --oauth-path <file path>', 'location to store oauth credentials', './.oauth')
   .option('-d, --db-path <file path>', 'location of sqlite db', './nflickr.sqlite')
   .option('-t, --db-table <table name>', 'table name', 'nflickr_photos')
