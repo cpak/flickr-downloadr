@@ -14,13 +14,15 @@ cli
   .option('-d, --db-path <file path>', 'location of sqlite db', './nflickr.sqlite')
   .option('-t, --db-table <table name>', 'table name', 'nflickr_photos')
   .option('-f, --force', 'force download', false)
+  .option('-n, --dry-run', 'only output files that would have been downloaded', false)
   .parse(process.argv)
 
 const opts = [
   'oauthPath',
   'dbPath',
   'dbTable',
-  'force'
+  'force',
+  'dryRun'
 ].reduce((o, k) => Object.assign({}, o, { [k]: cli[k] }), {})
 
 const die = msg => {
@@ -45,5 +47,5 @@ let current = 0
 output.on('total', n => (total = n))
 
 output
-  .map(({ path, bytes, duration }) => `${++current}/${total}: ${path} ${bytes}b, ${duration}ms\n`)
+  .map(r => opts.dryRun ? `${++current}/${total}: ${r.url}\n` : `${++current}/${total}: ${r.path} ${r.bytes}b, ${r.duration}ms\n`)
   .pipe(process.stdout)
