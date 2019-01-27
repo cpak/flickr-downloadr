@@ -10,7 +10,6 @@ const usage = '<destination dir> [options]'
 cli
   .version(version)
   .usage(usage)
-  .option('-o, --oauth-path <file path>', 'location to store oauth credentials', './.oauth')
   .option('-d, --db-path <file path>', 'location of sqlite db', './nflickr.sqlite')
   .option('-t, --db-table <table name>', 'table name', 'nflickr_photos')
   .option('-f, --force', 'force download', false)
@@ -18,7 +17,6 @@ cli
   .parse(process.argv)
 
 const opts = [
-  'oauthPath',
   'dbPath',
   'dbTable',
   'force',
