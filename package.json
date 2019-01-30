@@ -19,7 +19,8 @@
     "parallel-transform": "^1.1.0",
     "prompt": "^1.0.0",
     "ramda": "^0.26.1",
-    "sqlite3": "^4.0.6"
+    "sqlite3": "^4.0.6",
+    "tough-cookie": "^3.0.0"
   },
   "devDependencies": {
     "eslint": "^5.12.0",

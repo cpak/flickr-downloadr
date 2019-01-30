@@ -11,7 +11,7 @@ cli
   .usage(usage)
   .option('-d, --db-path <file path>', 'location of sqlite db', './nflickr.sqlite')
   .option('-t, --db-table <table name>', 'table name', 'nflickr_photos')
-  .option('-p, --photos-only', 'download only photos', false)
+  .option('-o, --type-only <type>', 'download only for items of specified type', null)
   .option('-c, --concurrent <number>', 'number of concurrent downloads', x => parseInt(x, 10), 5)
   .option('-f, --force', 'force download', false)
   .option('-n, --dry-run', 'only output files that would have been downloaded', false)
@@ -20,7 +20,7 @@ cli
 const opts = [
   'dbPath',
   'dbTable',
-  'photosOnly',
+  'typeOnly',
   'concurrent',
   'force',
   'dryRun'
